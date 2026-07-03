@@ -3,9 +3,34 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
 const youtubedl = require('youtube-dl-exec');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// YouTube, sunucu (datacenter) IP'lerinden gelen isteklerde "sign in to confirm
+// you're not a bot" hatasi veriyor. Cozum: gercek bir hesaptan alinmis cookies.txt
+// dosyasini base64 olarak YTDLP_COOKIES_B64 ortam degiskenine koy, biz burada
+// decode edip diske yaziyoruz ve yt-dlp'ye --cookies olarak veriyoruz.
+const COOKIES_PATH = path.join('/tmp', 'cookies.txt');
+let cookiesAvailable = false;
+
+if (process.env.YTDLP_COOKIES_B64) {
+  try {
+    const decoded = Buffer.from(process.env.YTDLP_COOKIES_B64, 'base64').toString('utf-8');
+    fs.writeFileSync(COOKIES_PATH, decoded);
+    cookiesAvailable = true;
+    console.log('cookies.txt basariyla yazildi, bot korumasi icin kullanilacak.');
+  } catch (err) {
+    console.error('YTDLP_COOKIES_B64 decode edilemedi:', err.message);
+  }
+} else {
+  console.warn(
+    'UYARI: YTDLP_COOKIES_B64 tanimli degil. YouTube "sign in to confirm you\'re not a bot" ' +
+    'hatasi verebilir. README.md icindeki "Bot korumasi / cookies" bolumune bak.'
+  );
+}
 
 // Basit API key korumasi (istersen Render ortam degiskeni olarak API_KEY tanimla)
 const API_KEY = process.env.API_KEY || null;
@@ -69,11 +94,11 @@ app.get('/api/resolve/:videoId', checkApiKey, async (req, res) => {
     const info = await youtubedl(url, {
       dumpSingleJson: true,
       noWarnings: true,
-      noCallHome: true,
       noCheckCertificates: true,
       preferFreeFormats: true,
       format,
       noPlaylist: true,
+      ...(cookiesAvailable ? { cookies: COOKIES_PATH } : {}),
     });
 
     const result = {
