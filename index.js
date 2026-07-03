@@ -91,15 +91,26 @@ app.get('/api/resolve/:videoId', checkApiKey, async (req, res) => {
   try {
     const format = type === 'audio' ? 'bestaudio/best' : 'best';
 
-    const info = await youtubedl(url, {
+    const baseOptions = {
       dumpSingleJson: true,
       noWarnings: true,
       noCheckCertificates: true,
       preferFreeFormats: true,
-      format,
       noPlaylist: true,
+      // YouTube web client'ta bazi formatlari kisitliyor (SABR/PO token sorunu).
+      // android client genelde dogrudan indirilebilir URL'ler donduruyor.
+      extractorArgs: 'youtube:player_client=android,web',
       ...(cookiesAvailable ? { cookies: COOKIES_PATH } : {}),
-    });
+    };
+
+    let info;
+    try {
+      info = await youtubedl(url, { ...baseOptions, format });
+    } catch (firstErr) {
+      // format bulunamadiysa daha genis bir secime dus
+      console.warn(`Ilk deneme basarisiz (${videoId}), 'best' ile tekrar deneniyor:`, firstErr.message);
+      info = await youtubedl(url, { ...baseOptions, format: 'best' });
+    }
 
     const result = {
       videoId,
