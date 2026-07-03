@@ -97,19 +97,39 @@ app.get('/api/resolve/:videoId', checkApiKey, async (req, res) => {
       noCheckCertificates: true,
       preferFreeFormats: true,
       noPlaylist: true,
-      // YouTube web client'ta bazi formatlari kisitliyor (SABR/PO token sorunu).
-      // android client genelde dogrudan indirilebilir URL'ler donduruyor.
-      extractorArgs: 'youtube:player_client=android,web',
+      // Node.js zaten sunucuda kurulu, yt-dlp'nin JS challenge (n-challenge) cozmesi icin kullanabiliyoruz
+      jsRuntimes: 'node',
       ...(cookiesAvailable ? { cookies: COOKIES_PATH } : {}),
     };
 
+    // YouTube 2025-2026 itibariyla bazi client'larda (web, web_safari) formatlari
+    // PO token olmadan gizliyor (SABR zorlamasi). tv ve android client'lari su an
+    // topluluk tarafinda en tutarli calisan secenekler. Sirayla deniyoruz.
+    const clientAttempts = [
+      'tv',
+      'android',
+      'ios',
+      'web',
+    ];
+
     let info;
-    try {
-      info = await youtubedl(url, { ...baseOptions, format });
-    } catch (firstErr) {
-      // format bulunamadiysa daha genis bir secime dus
-      console.warn(`Ilk deneme basarisiz (${videoId}), 'best' ile tekrar deneniyor:`, firstErr.message);
-      info = await youtubedl(url, { ...baseOptions, format: 'best' });
+    let lastErr;
+    for (const client of clientAttempts) {
+      try {
+        info = await youtubedl(url, {
+          ...baseOptions,
+          format,
+          extractorArgs: `youtube:player_client=${client}`,
+        });
+        break; // basarili oldu, dongudan cik
+      } catch (err) {
+        lastErr = err;
+        console.warn(`'${client}' client basarisiz (${videoId}):`, err.message.split('\n')[0]);
+      }
+    }
+
+    if (!info) {
+      throw lastErr;
     }
 
     const result = {

@@ -4,11 +4,11 @@
   "description": "YouTube ses stream URL resolver API (yt-dlp tabanli)",
   "main": "index.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "node index.js",
-    "postinstall": "node scripts/update-ytdlp.js"
+    "postinstall": "node -e \"try{require('child_process').execFileSync(require('path').join(__dirname,'node_modules','youtube-dl-exec','bin','yt-dlp'),['-U'],{stdio:'inherit',timeout:30000})}catch(e){console.warn('yt-dlp guncellenemedi, devam ediliyor:',e.message)}\""
   },
   "dependencies": {
     "cors": "^2.8.5",
