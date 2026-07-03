@@ -1,0 +1,19 @@
+{
+  "name": "yt-stream-api",
+  "version": "1.0.0",
+  "description": "YouTube ses stream URL resolver API (yt-dlp tabanli)",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "node-cache": "^5.1.2",
+    "youtube-dl-exec": "^3.0.10"
+  }
+}
